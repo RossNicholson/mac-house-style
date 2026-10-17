@@ -6,7 +6,8 @@ import SwiftUI
 /// edge under the menu bar and respecting the window's minimum size.
 /// Every menu bar panel has one.
 public struct ResizeGrip: NSViewRepresentable {
-    /// Called with the new size when the drag ends, to remember it
+    /// Called with the new size when the drag ends. Leave it out in a
+    /// MenuBarPanelController's panel, which remembers the size itself.
     var onResized: ((NSSize) -> Void)?
 
     public init(onResized: ((NSSize) -> Void)? = nil) {
@@ -78,7 +79,13 @@ public struct ResizeGrip: NSViewRepresentable {
         }
 
         public override func mouseUp(with event: NSEvent) {
-            if let size = window?.frame.size, size != startFrame.size { onResized?(size) }
+            guard let window, window.frame.size != startFrame.size else { return }
+            if let onResized {
+                onResized(window.frame.size)
+            } else {
+                // In a MenuBarPanelController's panel, remember the size there
+                (window.delegate as? MenuBarPanelController)?.rememberSize(window.frame.size)
+            }
         }
     }
 }

@@ -79,8 +79,9 @@ public struct GhostButton: View {
             .foregroundStyle(onPastel ? AppColors.ink : AppColors.text)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
-            .background(onPastel ? Color.white.opacity(0.7) : AppColors.surface, in: Capsule())
-            .overlay(Capsule().strokeBorder(onPastel ? Color.clear : AppColors.hairline))
+            .background(onPastel ? Color.white.opacity(0.7) : AppColors.surface, in: Capsule(style: .circular))
+            // A .continuous capsule's outline draws stray marks at its ends
+            .overlay(Capsule(style: .circular).strokeBorder(onPastel ? Color.clear : AppColors.hairline))
             .contentShape(Capsule())
         }
         .buttonStyle(PressableStyle())
