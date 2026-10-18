@@ -10,7 +10,7 @@ let package = Package(
     targets: [
         .target(
             name: "HouseStyle",
-            resources: [.copy("Fonts")]
+            resources: [.copy("Fonts"), .copy("Icons")]
         ),
         .testTarget(
             name: "HouseStyleTests",

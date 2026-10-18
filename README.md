@@ -19,7 +19,8 @@ just one of the apps needs nothing else.
   or a click elsewhere, stays put, and remembers the size the corner grip drags it to. The views on it
   are `PanelHeader`, `HeaderRefreshButton`, `PanelFooter`, `FooterButton` and `.menuBarPanel()`.
 - **Settings:** `SettingToggle`, `SettingCard`, `SettingNote`, `PillPicker`, `UpdateBlock`
-- **About:** `AboutPopover`
+- **About:** `AboutPopover`, with a "More apps by Ross" card (`MoreAppsCard`). It lists the other Mac apps,
+  leaving out the current one and any already installed, then one row for the iPhone apps.
 - **Updates:** `SelfUpdater`. An app installed with Homebrew updates itself through its cask and restarts.
   Installed from the DMG, "Check for updates" asks GitHub for the latest release and opens its page.
 - **Screenshots:** `Snapshot.png` and `Snapshot.panel` render views to PNG off-screen, from a test
@@ -81,6 +82,12 @@ just one of the apps needs nothing else.
 
 5. In Settings, put the app's own settings first, then **Launch at login**, then
    `UpdateBlock(updater: updater, app: .myApp)`. Call `updater.checkSilent()` at launch.
+
+## Adding an app to "More apps by Ross"
+
+Add a case to `HouseMacApp` in `MoreApps.swift` (name, tagline, repo, bundle ID, website page) and put
+its icon in `Sources/HouseStyle/Icons` as a 256 px PNG (the app's `icon_128x128@2x.png`). New iPhone apps
+go in `HouseiPhoneApp`, with a 64 px PNG of the icon. Then tag and bump as below.
 
 ## Changing the look
 

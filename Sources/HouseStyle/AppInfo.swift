@@ -30,13 +30,16 @@ public struct AppInfo: Sendable {
     public var repoURL: URL { URL(string: "https://github.com/RossNicholson/\(repo)")! }
 }
 
-/// The info popover: who made the app, how to get help, and the small print
+/// The info popover: who made the app, how to get help, the other apps and the small print
 public struct AboutPopover<Mascot: View>: View {
     let app: AppInfo
     let mascot: Mascot
+    let hidingInstalledApps: Bool
 
-    public init(app: AppInfo, @ViewBuilder mascot: () -> Mascot) {
+    /// `hidingInstalledApps: false` lists every other app in "More apps by Ross", for screenshots
+    public init(app: AppInfo, hidingInstalledApps: Bool = true, @ViewBuilder mascot: () -> Mascot) {
         self.app = app
+        self.hidingInstalledApps = hidingInstalledApps
         self.mascot = mascot()
     }
 
@@ -58,6 +61,8 @@ public struct AboutPopover<Mascot: View>: View {
                              symbol: "cup.and.saucer.fill") {
                 NSWorkspace.shared.open(URL(string: "https://buymeacoffee.com/rossnicholson")!)
             }
+
+            MoreAppsCard(current: app, hidingInstalled: hidingInstalledApps)
 
             HStack(spacing: 10) {
                 MonoLink(title: "Website", destination: URL(string: "https://rossnicholson.dev")!)
