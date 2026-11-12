@@ -47,3 +47,16 @@ import Testing
         }
     }
 }
+
+/// The off-screen copy that sizes a panel must wrap text at the panel's
+/// width, or the panel comes out too short and cuts off its footer
+@MainActor @Test func panelMeasuresWrappedText() {
+    let text = String(repeating: "Claude Code can use your keys without seeing them. ", count: 4)
+    let oneLine = NSHostingView(rootView: Text("Claude")).fittingSize.height
+    let measured = NSHostingView(rootView: Text(text)
+        .fixedSize(horizontal: false, vertical: true)
+        .menuBarPanel()
+        .environment(\.isMeasuringPanel, true)).fittingSize
+    #expect(measured.width == PanelMetrics.width)
+    #expect(measured.height > oneLine * 2, "text should wrap over several lines")
+}

@@ -26,16 +26,25 @@ private struct MenuBarPanelFrame: ViewModifier {
     let resizable: Bool
 
     func body(content: Content) -> some View {
-        let flexible = resizable && !measuring
-        content
-            .frame(minWidth: width, maxWidth: flexible ? .infinity : width,
-                   maxHeight: flexible ? .infinity : nil, alignment: .top)
+        sized(content)
             .background(AppColors.ground)
             .overlay(alignment: .bottomTrailing) {
                 if resizable {
                     ResizeGrip().padding(3)
                 }
             }
+    }
+
+    /// The measuring copy gets a fixed width so its text wraps as it will in
+    /// the panel: a min/max frame asked for its ideal size measures every
+    /// line unwrapped, and the panel comes out too short.
+    @ViewBuilder private func sized(_ content: Content) -> some View {
+        if measuring {
+            content.frame(width: width, alignment: .top)
+        } else {
+            content.frame(minWidth: width, maxWidth: resizable ? .infinity : width,
+                          maxHeight: resizable ? .infinity : nil, alignment: .top)
+        }
     }
 }
 
