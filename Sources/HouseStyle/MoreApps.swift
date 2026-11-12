@@ -9,6 +9,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
     case mopUp
     case keyBar
     case repoRadar
+    case macPing
 
     public var id: String { rawValue }
 
@@ -19,6 +20,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .mopUp: return "Mop Up"
         case .keyBar: return "KeyBar"
         case .repoRadar: return "Repo Radar"
+        case .macPing: return "MacPing"
         }
     }
 
@@ -29,6 +31,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .mopUp: return "Clean up and tune up your Mac"
         case .keyBar: return "API keys for Claude Code, in the Keychain"
         case .repoRadar: return "Repos with work you haven't pushed"
+        case .macPing: return "Ping lots of hosts at once"
         }
     }
 
@@ -40,6 +43,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .mopUp: return "mop-up"
         case .keyBar: return "keybar"
         case .repoRadar: return "reporadar"
+        case .macPing: return "macping"
         }
     }
 
@@ -50,6 +54,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .mopUp: return "com.rossnicholson.MopUp"
         case .keyBar: return "com.rossnicholson.KeyBar"
         case .repoRadar: return "com.rossnicholson.RepoRadar"
+        case .macPing: return "com.rossnicholson.MacPing"
         }
     }
 
@@ -61,6 +66,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .mopUp: return URL(string: "https://rossnicholson.dev/mopup")!
         case .keyBar: return URL(string: "https://rossnicholson.dev/keybar")!
         case .repoRadar: return URL(string: "https://rossnicholson.dev/reporadar")!
+        case .macPing: return URL(string: "https://rossnicholson.dev/macping")!
         }
     }
 
@@ -71,6 +77,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .mopUp: return "mopup"
         case .keyBar: return "keybar"
         case .repoRadar: return "reporadar"
+        case .macPing: return "macping"
         }
     }
 
