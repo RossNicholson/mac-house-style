@@ -18,7 +18,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .clawdBar: return "ClawdBar"
         case .mopUp: return "Mop Up"
         case .keyBar: return "KeyBar"
-        case .repoRadar: return "RepoRadar"
+        case .repoRadar: return "Repo Radar"
         }
     }
 
