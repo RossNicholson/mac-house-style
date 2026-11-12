@@ -7,6 +7,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
     case brewDock
     case clawdBar
     case mopUp
+    case keyBar
 
     public var id: String { rawValue }
 
@@ -15,6 +16,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .brewDock: return "BrewDock"
         case .clawdBar: return "ClawdBar"
         case .mopUp: return "Mop Up"
+        case .keyBar: return "KeyBar"
         }
     }
 
@@ -23,6 +25,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .brewDock: return "Homebrew in your menu bar"
         case .clawdBar: return "Claude Code usage at a glance"
         case .mopUp: return "Clean up and tune up your Mac"
+        case .keyBar: return "API keys for Claude Code, in the Keychain"
         }
     }
 
@@ -32,6 +35,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .brewDock: return "brewdock"
         case .clawdBar: return "clawdbar"
         case .mopUp: return "mop-up"
+        case .keyBar: return "keybar"
         }
     }
 
@@ -40,6 +44,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .brewDock: return "com.rossnicholson.BrewDock"
         case .clawdBar: return "com.rossnicholson.ClawdBar"
         case .mopUp: return "com.rossnicholson.MopUp"
+        case .keyBar: return "com.rossnicholson.KeyBar"
         }
     }
 
@@ -49,6 +54,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .brewDock: return URL(string: "https://rossnicholson.dev/brewdock")!
         case .clawdBar: return URL(string: "https://rossnicholson.dev/clawdbar")!
         case .mopUp: return URL(string: "https://rossnicholson.dev/mopup")!
+        case .keyBar: return URL(string: "https://rossnicholson.dev/keybar")!
         }
     }
 
@@ -57,6 +63,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .brewDock: return "brewdock"
         case .clawdBar: return "clawdbar"
         case .mopUp: return "mopup"
+        case .keyBar: return "keybar"
         }
     }
 
