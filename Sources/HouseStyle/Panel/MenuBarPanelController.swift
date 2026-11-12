@@ -17,9 +17,11 @@ public final class MenuBarPanelController: NSObject, NSWindowDelegate {
     public var onClose: (() -> Void)?
 
     private let container: NSView
-    /// An off-screen copy of the content at its natural size, used to measure
-    /// how big the panel needs to be. Nil for a panel with a fixed default size.
-    private var measure: NSView?
+    /// Lays the content out at a width: nil lets it fill the panel freely
+    private var render: ((CGFloat?) -> Void)?
+    /// The content's natural size when laid out at a width. Nil for a panel
+    /// with a fixed default size.
+    private var measure: ((CGFloat) -> NSSize)?
     private var defaultSize = NSSize(width: 300, height: 400)
     private var minimumSize = NSSize(width: 300, height: 200)
     private var resizable = true
@@ -66,31 +68,32 @@ public final class MenuBarPanelController: NSObject, NSWindowDelegate {
 
     // MARK: - Content
 
-    /// Show a view that the panel fits to. `make` is called twice: once for
-    /// the panel and once for an off-screen copy that measures it. With
-    /// `resizable`, the grip can make the panel bigger than its content.
+    /// Show a view that the panel fits to. The panel measures the view
+    /// itself, as shown, so its state (a search, an open section) counts.
+    /// With `resizable`, the grip can make the panel bigger than its content;
+    /// `.menuBarPanel()` in the view picks this up.
     public func setContent<V: View>(resizable: Bool = true, @ViewBuilder _ make: () -> V) {
-        let measureView = NSHostingView(rootView: make().environment(\.isMeasuringPanel, true))
-        if #available(macOS 13.3, *) { measureView.safeAreaRegions = [] }
-        measure = measureView
         self.resizable = resizable
-        install(make())
+        install(make(), measured: true)
         fitToContent()
     }
 
     /// Show a view that fills a panel of a set size, for content such as a
     /// scrolling list that has no natural height
     public func setContent<V: View>(defaultSize: NSSize, minimumSize: NSSize, @ViewBuilder _ make: () -> V) {
-        measure = nil
         self.defaultSize = defaultSize
         self.minimumSize = minimumSize
         resizable = true
-        install(make())
+        install(make(), measured: false)
         fitToContent()
     }
 
-    private func install<V: View>(_ view: V) {
-        let hosting = NSHostingView(rootView: view)
+    private func install<V: View>(_ view: V, measured: Bool) {
+        let resizable = self.resizable
+        func root(_ width: CGFloat?) -> PanelRoot<V> {
+            PanelRoot(content: view, width: width, resizable: resizable)
+        }
+        let hosting = NSHostingView(rootView: root(nil))
         // The window decides the size; the content just fills it
         hosting.sizingOptions = []
         // The panel's title bar is hidden; don't leave a gap for it
@@ -99,41 +102,99 @@ public final class MenuBarPanelController: NSObject, NSWindowDelegate {
         hosting.autoresizingMask = [.width, .height]
         container.subviews.forEach { $0.removeFromSuperview() }
         container.addSubview(hosting)
+
+        // Setting the root view again keeps the content's state: it's the same view
+        render = { [weak hosting] width in hosting?.rootView = root(width) }
+        measure = measured ? { [weak hosting] width in
+            guard let hosting else { return .zero }
+            hosting.rootView = root(width)
+            // A hosting view only reports a fitting size while it sizes
+            // itself, so turn that on just long enough to ask
+            hosting.sizingOptions = [.intrinsicContentSize]
+            defer { hosting.sizingOptions = [] }
+            return hosting.fittingSize
+        } : nil
     }
 
     /// Size the panel to its content, or to the size you dragged it to if
-    /// that's bigger, keeping it hanging from the menu bar. Call this when the
-    /// content changes height (a card appears or goes away).
+    /// that's bigger, keeping it hanging from the menu bar and on the screen.
+    /// Call this when the content changes height (a card appears or goes away).
     public func fitToContent() {
-        let fit: NSSize
+        let largest = largestSize
+        let saved = resizable ? savedSize : nil
+        var minimum: NSSize
+        var size: NSSize
         if let measure {
-            fit = measure.fittingSize
-            guard fit.width > 0, fit.height > 0 else { return }
+            // Its narrowest, then its height at the width it'll be shown at
+            let narrowest = measure(0)
+            guard narrowest.width > 0, narrowest.height > 0 else { return }
+            let width = min(max(narrowest.width, saved?.width ?? 0), largest.width)
+            let natural = width == narrowest.width ? narrowest : measure(width)
+            render?(width)
+            minimum = NSSize(width: narrowest.width, height: natural.height)
+            size = NSSize(width: width, height: max(natural.height, saved?.height ?? 0))
         } else {
-            fit = minimumSize
+            minimum = minimumSize
+            let width = (saved?.width).flatMap { $0 > 0 ? $0 : nil } ?? defaultSize.width
+            let height = (saved?.height).flatMap { $0 > 0 ? $0 : nil } ?? defaultSize.height
+            size = NSSize(width: max(width, minimum.width), height: max(height, minimum.height))
         }
-        panel.minSize = fit
-        var size = resizable ? (savedSize ?? .zero) : .zero
-        if measure == nil, savedSize == nil { size = defaultSize }
-        size = NSSize(width: max(fit.width, size.width), height: max(fit.height, size.height))
+        // Never bigger than the screen, so the footer and grip stay in reach
+        minimum = NSSize(width: min(minimum.width, largest.width), height: min(minimum.height, largest.height))
+        size = NSSize(width: min(size.width, largest.width), height: min(size.height, largest.height))
+        panel.minSize = minimum
+        panel.maxSize = largest
         guard size != panel.frame.size else { return }
         if panel.isVisible {
             let frame = panel.frame
             panel.setFrame(NSRect(x: frame.minX, y: frame.maxY - size.height, width: size.width, height: size.height),
                            display: true)
+            position()
         } else {
             panel.setContentSize(size)
         }
     }
 
+    /// The room under the menu bar item on its screen
+    private var largestSize: NSSize {
+        let button = statusItem.button
+        guard let buttonWindow = button?.window,
+              let screen = buttonWindow.screen ?? NSScreen.main ?? NSScreen.screens.first else {
+            return NSSize(width: 10_000, height: 10_000)
+        }
+        let visible = screen.visibleFrame
+        let top = min(buttonWindow.frame.minY, visible.maxY)
+        return NSSize(width: max(visible.width - 8, 200), height: max(top - visible.minY - 8, 200))
+    }
+
+    /// The size you dragged the panel to. For a panel that fits its content,
+    /// a 0 width or height means that side fits the content.
     private var savedSize: NSSize? {
         UserDefaults.standard.string(forKey: sizeKey).map(NSSizeFromString)
     }
 
-    /// Remember a size the panel was dragged to. The grip calls this.
-    func rememberSize(_ size: NSSize) {
+    /// Remember a size the panel was dragged to. The grip calls this. For a
+    /// panel that fits its content, only a side that was dragged is kept, and
+    /// dragging a side back to the content's size lets it fit again.
+    func rememberSize(_ size: NSSize, from start: NSSize) {
         guard resizable else { return }
-        UserDefaults.standard.set(NSStringFromSize(size), forKey: sizeKey)
+        var remembered = size
+        if measure != nil {
+            remembered = savedSize ?? .zero
+            let fit = panel.minSize
+            if size.width != start.width { remembered.width = size.width <= fit.width + 1 ? 0 : size.width }
+            if size.height != start.height { remembered.height = size.height <= fit.height + 1 ? 0 : size.height }
+        }
+        if remembered == .zero {
+            UserDefaults.standard.removeObject(forKey: sizeKey)
+        } else {
+            UserDefaults.standard.set(NSStringFromSize(remembered), forKey: sizeKey)
+        }
+    }
+
+    public func windowDidResize(_ notification: Notification) {
+        // Content that's measured is laid out at the panel's width, so follow the grip
+        if measure != nil { render?(panel.frame.width) }
     }
 
     // MARK: - Open and close
@@ -189,7 +250,7 @@ public final class MenuBarPanelController: NSObject, NSWindowDelegate {
         let screenRect = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
         guard let screen = buttonWindow.screen ?? NSScreen.main ?? NSScreen.screens.first else { return }
         var x = screenRect.midX - panel.frame.width / 2
-        x = min(max(x, screen.visibleFrame.minX + 4), screen.visibleFrame.maxX - panel.frame.width - 4)
+        x = max(min(x, screen.visibleFrame.maxX - panel.frame.width - 4), screen.visibleFrame.minX + 4)
         panel.setFrameOrigin(NSPoint(x: x, y: screenRect.minY - panel.frame.height))
     }
 
@@ -218,15 +279,51 @@ public final class MenuBarPanelController: NSObject, NSWindowDelegate {
     }
 }
 
+/// The panel's content, told the width to lay out at and whether the panel
+/// can be resized
+struct PanelRoot<Content: View>: View {
+    let content: Content
+    let width: CGFloat?
+    let resizable: Bool
+
+    var body: some View {
+        content
+            .environment(\.panelContentWidth, width)
+            .environment(\.panelResizable, resizable)
+    }
+}
+
 private struct IsMeasuringPanelKey: EnvironmentKey {
     static let defaultValue = false
 }
 
+private struct PanelContentWidthKey: EnvironmentKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+private struct PanelResizableKey: EnvironmentKey {
+    static let defaultValue: Bool? = nil
+}
+
 public extension EnvironmentValues {
-    /// True in the off-screen copy of a panel's content that measures its
-    /// natural size. `menuBarPanel()` uses it to stop the copy stretching.
+    /// No longer set: the panel now measures its real content, not a copy
+    @available(*, deprecated, message: "The panel measures its real content now; this is always false")
     var isMeasuringPanel: Bool {
         get { self[IsMeasuringPanelKey.self] }
         set { self[IsMeasuringPanelKey.self] = newValue }
+    }
+}
+
+extension EnvironmentValues {
+    /// The width a measured panel lays its content out at; nil to fill freely
+    var panelContentWidth: CGFloat? {
+        get { self[PanelContentWidthKey.self] }
+        set { self[PanelContentWidthKey.self] = newValue }
+    }
+
+    /// Whether the controller made the panel resizable; nil outside one
+    var panelResizable: Bool? {
+        get { self[PanelResizableKey.self] }
+        set { self[PanelResizableKey.self] = newValue }
     }
 }

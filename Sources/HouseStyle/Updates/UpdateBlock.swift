@@ -17,7 +17,7 @@ public struct UpdateBlock: View {
         case .homebrew:
             ColorBlockButton(
                 title: updater.isUpdating ? "Updating…" : "Update \(app.name)",
-                detail: "A new version is ready. \(app.name) will restart.",
+                detail: updater.lastError ?? "A new version is ready. \(app.name) will restart.",
                 fill: AppColors.peach, symbol: "arrow.up"
             ) {
                 Task { await updater.update() }

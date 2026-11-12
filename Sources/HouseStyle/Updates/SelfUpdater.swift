@@ -39,7 +39,12 @@ public final class SelfUpdater: ObservableObject {
     public func checkSilent() async {
         guard isManagedByHomebrew else { return }
         let result = await Brew.run(["outdated", "--cask", app.caskFullName])
-        available = listsSelf(result.output) ? .homebrew : nil
+        // A failed quick check leaves things as they were
+        if listsSelf(result.output) {
+            available = .homebrew
+        } else if result.exitCode == 0 {
+            available = nil
+        }
     }
 
     /// "Check for updates": fetches Homebrew's latest index, or asks GitHub
@@ -49,9 +54,18 @@ public final class SelfUpdater: ObservableObject {
         lastError = nil
         defer { isChecking = false }
         if isManagedByHomebrew {
-            _ = await Brew.run(["update"], timeout: 60)
-            let result = await Brew.run(["outdated", "--cask", app.caskFullName])
-            available = listsSelf(result.output) ? .homebrew : nil
+            let update = await Brew.run(["update"], timeout: 60)
+            let outdated = await Brew.run(["outdated", "--cask", app.caskFullName])
+            // brew outdated exits 1 when the named cask is outdated, so a
+            // failure is a non-zero exit that doesn't list it
+            if listsSelf(outdated.output) {
+                available = .homebrew
+            } else {
+                available = nil
+                if update.exitCode != 0 || outdated.exitCode != 0 {
+                    lastError = "Couldn't check with Homebrew. Try again later."
+                }
+            }
         } else {
             do {
                 available = try await latestRelease()
@@ -65,18 +79,30 @@ public final class SelfUpdater: ObservableObject {
         switch available {
         case .homebrew:
             isUpdating = true
+            lastError = nil
             guard launchDetachedUpgrade() else {
                 isUpdating = false
                 lastError = "Couldn't start the update."
                 return
             }
             NSApp.terminate(nil)
+            // Still here: quitting was put off or turned down. The script
+            // only updates once the app has quit, and gives up after
+            // Self.quitWait, so stop showing "Updating…" after that.
+            try? await Task.sleep(for: .seconds(Self.quitWait + 5))
+            if isUpdating {
+                isUpdating = false
+                lastError = "\(app.name) didn't quit, so it wasn't updated. Try again."
+            }
         case .download(_, let page):
             NSWorkspace.shared.open(page)
         case nil:
             break
         }
     }
+
+    /// How long the upgrade script waits for the app to quit
+    static let quitWait: TimeInterval = 120
 
     private func listsSelf(_ output: String) -> Bool {
         output.split(separator: "\n").contains {
@@ -147,10 +173,15 @@ public final class SelfUpdater: ObservableObject {
         LOG="\(logURL.path)"
         : > "$LOG"
         echo "[$(date)] waiting for \(app.name) (pid \(pid)) to quit" >> "$LOG"
-        for i in $(seq 1 60); do
+        for i in $(seq 1 \(Int(Self.quitWait * 2))); do
             kill -0 \(pid) 2>/dev/null || break
             sleep 0.5
         done
+        # It didn't quit (something stopped it): don't upgrade under it
+        if kill -0 \(pid) 2>/dev/null; then
+            echo "[$(date)] \(app.name) is still running, not updating" >> "$LOG"
+            exit 0
+        fi
         echo "[$(date)] running brew upgrade --cask \(app.caskFullName)" >> "$LOG"
         "\(brew)" upgrade --cask \(app.caskFullName) >> "$LOG" 2>&1
         status=$?
@@ -158,7 +189,9 @@ public final class SelfUpdater: ObservableObject {
         if [ "$status" -ne 0 ]; then
             osascript -e 'display notification "Update failed. See \(logURL.path)" with title "\(app.name)"' >/dev/null 2>&1 || true
         fi
-        open -b "\(bundleID)" || open "\(appPath)"
+        # The path the cask just replaced first: by bundle ID, macOS may
+        # open another copy with the same ID (an old download, a dev build)
+        open "\(appPath)" || open -b "\(bundleID)"
         """
         do {
             try script.write(to: scriptURL, atomically: true, encoding: .utf8)
@@ -204,34 +237,60 @@ enum Brew {
         return env
     }()
 
+    /// Runs brew to the end, or until the timeout, on threads of its own.
+    /// A timed-out run comes back with exit code -1.
     static func run(_ args: [String], timeout: TimeInterval = 30) async -> Result {
         guard let path else { return Result(output: "", exitCode: 127) }
         return await withCheckedContinuation { continuation in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: path)
-            process.arguments = args
-            process.environment = environment
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = FileHandle.nullDevice
-            do {
-                try process.run()
-            } catch {
-                continuation.resume(returning: Result(output: "", exitCode: 1))
-                return
-            }
-            DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
-                if process.isRunning { process.terminate() }
-            }
-            // Read while brew runs, so large output can't fill the pipe and stall it
-            DispatchQueue.global().async {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                process.waitUntilExit()
-                continuation.resume(returning: Result(
-                    output: String(data: data, encoding: .utf8) ?? "",
-                    exitCode: process.terminationStatus
-                ))
+            Thread.detachNewThread {
+                continuation.resume(returning: runBlocking(path: path, args: args, timeout: timeout))
             }
         }
+    }
+
+    private static func runBlocking(path: String, args: [String], timeout: TimeInterval) -> Result {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = args
+        process.environment = environment
+        process.standardInput = FileHandle.nullDevice
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        let exited = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in exited.signal() }
+        do {
+            try process.run()
+        } catch {
+            return Result(output: "", exitCode: 1)
+        }
+
+        // Read while brew runs, so large output can't fill the pipe and stall it
+        let output = Output()
+        let read = DispatchSemaphore(value: 0)
+        Thread.detachNewThread {
+            output.data = pipe.fileHandleForReading.readDataToEndOfFile()
+            read.signal()
+        }
+
+        if exited.wait(timeout: .now() + timeout) == .timedOut {
+            process.terminate()
+            if exited.wait(timeout: .now() + 3) == .timedOut {
+                kill(process.processIdentifier, SIGKILL)
+            }
+            // A child brew started (git, curl) can keep the pipe open after
+            // brew is gone, so don't wait for the reader
+            return Result(output: "", exitCode: -1)
+        }
+        // Same for a child left running after brew finished
+        guard read.wait(timeout: .now() + 5) == .success else {
+            return Result(output: "", exitCode: -1)
+        }
+        return Result(output: String(data: output.data, encoding: .utf8) ?? "", exitCode: process.terminationStatus)
+    }
+
+    /// Filled in by the reading thread, read once it has signalled
+    private final class Output: @unchecked Sendable {
+        var data = Data()
     }
 }

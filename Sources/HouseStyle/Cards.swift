@@ -38,17 +38,20 @@ public struct MeterBar: View {
         self.height = height
     }
 
+    /// 0...1; NaN (e.g. 0 of 0) counts as empty
+    private var clamped: Double { fraction.isNaN ? 0 : min(max(fraction, 0), 1) }
+
     public var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(track)
                 Capsule().fill(fill)
-                    .frame(width: max(height, geo.size.width * min(max(fraction, 0), 1)))
+                    .frame(width: max(height, geo.size.width * clamped))
             }
         }
         .frame(height: height)
         .accessibilityElement()
-        .accessibilityValue(Text("\(Int((fraction * 100).rounded())) percent"))
+        .accessibilityValue(Text("\(Int((clamped * 100).rounded())) percent"))
     }
 }
 

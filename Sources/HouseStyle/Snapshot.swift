@@ -44,7 +44,8 @@ public enum Snapshot {
     /// for one that fills a set size
     public static func panel<V: View>(dark: Bool = false, size: NSSize? = nil, to url: URL,
                                       @ViewBuilder _ make: () -> V) throws {
-        let fit = size ?? NSHostingView(rootView: make().environment(\.isMeasuringPanel, true)).fittingSize
+        // Laid out at its narrowest, as a panel measures it
+        let fit = size ?? NSHostingView(rootView: make().environment(\.panelContentWidth, 0)).fittingSize
         try png(make(), size: fit, dark: dark, to: url)
     }
 }

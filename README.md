@@ -62,6 +62,9 @@ just one of the apps needs nothing else.
    panel.setContent { MenuBarView() }   // fits its content; the grip makes it bigger
    ```
 
+   The panel measures the view as shown, state and all, and never grows past the screen.
+   When its content changes height, call `panel.fitToContent()` on the next run-loop tick.
+
    and build the view from the shared pieces:
 
    ```swift

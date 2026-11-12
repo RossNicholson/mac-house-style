@@ -14,16 +14,26 @@ public enum PanelMetrics {
 public extension View {
     /// The menu bar panel's frame: the ground colour, the corner resize grip,
     /// and a width that grows when the panel is dragged bigger. Put it on the
-    /// panel's whole content (header, content, footer).
+    /// panel's whole content (header, content, footer). In a
+    /// MenuBarPanelController's panel, whether it's resizable comes from the
+    /// controller's `setContent`, and `resizable` here is ignored.
     func menuBarPanel(width: CGFloat = PanelMetrics.width, resizable: Bool = true) -> some View {
         modifier(MenuBarPanelFrame(width: width, resizable: resizable))
     }
 }
 
 private struct MenuBarPanelFrame: ViewModifier {
-    @Environment(\.isMeasuringPanel) private var measuring
+    @Environment(\.panelContentWidth) private var contentWidth
+    @Environment(\.panelResizable) private var controllerResizable
     let width: CGFloat
-    let resizable: Bool
+    let requestedResizable: Bool
+
+    init(width: CGFloat, resizable: Bool) {
+        self.width = width
+        requestedResizable = resizable
+    }
+
+    private var resizable: Bool { controllerResizable ?? requestedResizable }
 
     func body(content: Content) -> some View {
         sized(content)
@@ -35,12 +45,14 @@ private struct MenuBarPanelFrame: ViewModifier {
             }
     }
 
-    /// The measuring copy gets a fixed width so its text wraps as it will in
-    /// the panel: a min/max frame asked for its ideal size measures every
-    /// line unwrapped, and the panel comes out too short.
+    /// A measured panel lays its content out at a set width, so its text
+    /// wraps as it will be shown: a min/max frame asked for its ideal size
+    /// measures every line unwrapped, and the panel comes out too short.
     @ViewBuilder private func sized(_ content: Content) -> some View {
-        if measuring {
-            content.frame(width: width, alignment: .top)
+        if let contentWidth {
+            content
+                .frame(width: resizable ? max(contentWidth, width) : width, alignment: .top)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         } else {
             content.frame(minWidth: width, maxWidth: resizable ? .infinity : width,
                           maxHeight: resizable ? .infinity : nil, alignment: .top)

@@ -84,7 +84,7 @@ public struct ResizeGrip: NSViewRepresentable {
                 onResized(window.frame.size)
             } else {
                 // In a MenuBarPanelController's panel, remember the size there
-                (window.delegate as? MenuBarPanelController)?.rememberSize(window.frame.size)
+                (window.delegate as? MenuBarPanelController)?.rememberSize(window.frame.size, from: startFrame.size)
             }
         }
     }
