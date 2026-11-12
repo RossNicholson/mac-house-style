@@ -8,6 +8,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
     case clawdBar
     case mopUp
     case keyBar
+    case repoRadar
 
     public var id: String { rawValue }
 
@@ -17,6 +18,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .clawdBar: return "ClawdBar"
         case .mopUp: return "Mop Up"
         case .keyBar: return "KeyBar"
+        case .repoRadar: return "RepoRadar"
         }
     }
 
@@ -26,6 +28,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .clawdBar: return "Claude Code usage at a glance"
         case .mopUp: return "Clean up and tune up your Mac"
         case .keyBar: return "API keys for Claude Code, in the Keychain"
+        case .repoRadar: return "Repos with work you haven't pushed"
         }
     }
 
@@ -36,6 +39,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .clawdBar: return "clawdbar"
         case .mopUp: return "mop-up"
         case .keyBar: return "keybar"
+        case .repoRadar: return "reporadar"
         }
     }
 
@@ -45,6 +49,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .clawdBar: return "com.rossnicholson.ClawdBar"
         case .mopUp: return "com.rossnicholson.MopUp"
         case .keyBar: return "com.rossnicholson.KeyBar"
+        case .repoRadar: return "com.rossnicholson.RepoRadar"
         }
     }
 
@@ -55,6 +60,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .clawdBar: return URL(string: "https://rossnicholson.dev/clawdbar")!
         case .mopUp: return URL(string: "https://rossnicholson.dev/mopup")!
         case .keyBar: return URL(string: "https://rossnicholson.dev/keybar")!
+        case .repoRadar: return URL(string: "https://rossnicholson.dev/reporadar")!
         }
     }
 
@@ -64,6 +70,7 @@ public enum HouseMacApp: String, CaseIterable, Identifiable, Sendable {
         case .clawdBar: return "clawdbar"
         case .mopUp: return "mopup"
         case .keyBar: return "keybar"
+        case .repoRadar: return "reporadar"
         }
     }
 

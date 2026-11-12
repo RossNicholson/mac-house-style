@@ -21,8 +21,8 @@ import Testing
 
 @Test func moreAppsLeaveOutTheCurrentApp() {
     let others = HouseMacApp.others(than: "clawdbar", hidingInstalled: false)
-    #expect(others == [.brewDock, .mopUp, .keyBar])
-    #expect(HouseMacApp.allCases.allSatisfy { HouseMacApp.others(than: $0.repo, hidingInstalled: false).count == 3 })
+    #expect(others == [.brewDock, .mopUp, .keyBar, .repoRadar])
+    #expect(HouseMacApp.allCases.allSatisfy { HouseMacApp.others(than: $0.repo, hidingInstalled: false).count == 4 })
 }
 
 @Test func appIconsAreBundled() {

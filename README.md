@@ -2,7 +2,7 @@
 
 The shared look and menu bar plumbing for Ross Nicholson's Mac apps:
 [BrewDock](https://github.com/RossNicholson/brewdock), [ClawdBar](https://github.com/RossNicholson/clawdbar),
-[Mop Up](https://github.com/RossNicholson/mop-up) and [KeyBar](https://github.com/RossNicholson/keybar).
+[Mop Up](https://github.com/RossNicholson/mop-up), [KeyBar](https://github.com/RossNicholson/keybar) and [RepoRadar](https://github.com/RossNicholson/reporadar).
 
 It's compiled into each app, so every app is complete on its own. Someone with
 just one of the apps needs nothing else.
